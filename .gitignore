@@ -1,0 +1,14 @@
+node_modules/
+.DS_Store
+
+# Remotion / build caches
+.remotion/
+.cache/
+algo-visualizer/out/
+dist/
+
+# Local runtime artifacts
+*.log
+*.pid
+.web.log
+.server.log

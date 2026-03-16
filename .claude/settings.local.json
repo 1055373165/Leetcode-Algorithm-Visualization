@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls /Users/smy/project/algorithm/*.md 2>/dev/null; echo \"---\"; ls -d /Users/smy/project/algorithm/0*/ 2>/dev/null | head -5)",
+      "Bash(ls -d /Users/smy/project/algorithm/0131*/ 2>/dev/null; mkdir -p /Users/smy/project/algorithm/0131-new.PalindromePartitioning)",
+      "Bash(cd /Users/smy/project/algorithm/algo-visualizer && npx remotion render src/index.tsx PalindromePartitioning out/PalindromePartitioning.mp4 2>&1)",
+      "Bash(ls -d /Users/smy/project/algorithm/0093*/ 2>/dev/null; ls /Users/smy/project/algorithm/algo-visualizer/src/compositions/ | grep -i ip 2>/dev/null; ls /Users/smy/project/algorithm/algo-visualizer/src/compositions/ | grep -i restore 2>/dev/null)",
+      "Bash(npx remotion render src/index.tsx RestoreIpAddresses out/RestoreIpAddresses.mp4 2>&1 | tail -20)",
+      "Bash(which git-filter-repo 2>/dev/null || brew list git-filter-repo 2>/dev/null || echo \"not installed\")",
+      "Bash(brew install git-filter-repo)"
+    ]
+  }
+}
