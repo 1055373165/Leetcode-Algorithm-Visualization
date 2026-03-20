@@ -25,6 +25,7 @@ import {AtoiComposition} from './compositions/Atoi';
 import {RotateImageComposition} from './compositions/RotateImage';
 import {FindDuplicateComposition} from './compositions/FindDuplicate';
 import {KthLargestComposition} from './compositions/KthLargest';
+import {ImplementTrieComposition} from './compositions/ImplementTrie';
 import './style.css';
 
 export const RemotionRoot: React.FC = () => {
@@ -234,6 +235,14 @@ export const RemotionRoot: React.FC = () => {
 				id="KthLargest"
 				component={KthLargestComposition}
 				durationInFrames={600} // ~10 steps * 60 = 600
+				fps={30}
+				width={1280}
+				height={720}
+			/>
+			<Composition
+				id="ImplementTrie"
+				component={ImplementTrieComposition}
+				durationInFrames={1800}
 				fps={30}
 				width={1280}
 				height={720}

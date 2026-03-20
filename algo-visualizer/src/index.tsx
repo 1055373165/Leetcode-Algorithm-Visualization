@@ -7,6 +7,9 @@ import {DailyTemperaturesComposition} from './compositions/DailyTemperatures';
 import {ShuffleArrayComposition} from './compositions/ShuffleArray';
 import {PalindromePartitioningComposition} from './compositions/PalindromePartitioning';
 import {RestoreIpAddressesComposition} from './compositions/RestoreIpAddresses';
+import {ImplementTrieComposition} from './compositions/ImplementTrie';
+import {ZigzagLevelOrderComposition} from './compositions/ZigzagLevelOrder';
+import {SlidingWindowMaxComposition} from './compositions/SlidingWindowMax';
 
 export const RemotionRoot: React.FC = () => {
 	return (
@@ -70,6 +73,30 @@ export const RemotionRoot: React.FC = () => {
 				height={720}
 			/>
 
+			<Composition
+				id="ImplementTrie"
+				component={ImplementTrieComposition}
+				durationInFrames={1800}
+				fps={30}
+				width={1280}
+				height={720}
+			/>
+			<Composition
+				id="ZigzagLevelOrder"
+				component={ZigzagLevelOrderComposition}
+				durationInFrames={1200}
+				fps={30}
+				width={1280}
+				height={720}
+			/>
+			<Composition
+				id="SlidingWindowMax"
+				component={SlidingWindowMaxComposition}
+				durationInFrames={1500}
+				fps={30}
+				width={1280}
+				height={720}
+			/>
 		</>
 	);
 };
