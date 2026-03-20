@@ -10,6 +10,7 @@ import {RestoreIpAddressesComposition} from './compositions/RestoreIpAddresses';
 import {ImplementTrieComposition} from './compositions/ImplementTrie';
 import {ZigzagLevelOrderComposition} from './compositions/ZigzagLevelOrder';
 import {SlidingWindowMaxComposition} from './compositions/SlidingWindowMax';
+import {ZigzagDualStackComposition} from './compositions/ZigzagDualStack';
 
 export const RemotionRoot: React.FC = () => {
 	return (
@@ -93,6 +94,14 @@ export const RemotionRoot: React.FC = () => {
 				id="SlidingWindowMax"
 				component={SlidingWindowMaxComposition}
 				durationInFrames={1500}
+				fps={30}
+				width={1280}
+				height={720}
+			/>
+			<Composition
+				id="ZigzagDualStack"
+				component={ZigzagDualStackComposition}
+				durationInFrames={1200}
 				fps={30}
 				width={1280}
 				height={720}
