@@ -24,6 +24,10 @@ import {
 	ZigzagConversionComposition,
 	ZIGZAG_CONVERSION_TOTAL_FRAMES,
 } from './compositions/ZigzagConversion';
+import {
+	RightSideViewComposition,
+	RIGHT_SIDE_VIEW_TOTAL_FRAMES,
+} from './compositions/RightSideView';
 
 export const RemotionRoot: React.FC = () => {
 	return (
@@ -115,6 +119,14 @@ export const RemotionRoot: React.FC = () => {
 				id="ZigzagDualStack"
 				component={ZigzagDualStackComposition}
 				durationInFrames={1200}
+				fps={30}
+				width={1280}
+				height={720}
+			/>
+			<Composition
+				id="RightSideView"
+				component={RightSideViewComposition}
+				durationInFrames={RIGHT_SIDE_VIEW_TOTAL_FRAMES}
 				fps={30}
 				width={1280}
 				height={720}
