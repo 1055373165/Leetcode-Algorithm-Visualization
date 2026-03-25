@@ -36,6 +36,10 @@ import {
 	RightSideViewComposition,
 	RIGHT_SIDE_VIEW_TOTAL_FRAMES,
 } from './compositions/RightSideView';
+import {
+	LFUCacheComposition,
+	LFU_CACHE_TOTAL_FRAMES,
+} from './compositions/LFUCache';
 
 export const RemotionRoot: React.FC = () => {
 	return (
@@ -159,6 +163,14 @@ export const RemotionRoot: React.FC = () => {
 				id="ZigzagConversion"
 				component={ZigzagConversionComposition}
 				durationInFrames={ZIGZAG_CONVERSION_TOTAL_FRAMES}
+				fps={30}
+				width={1920}
+				height={1080}
+			/>
+			<Composition
+				id="LFUCache"
+				component={LFUCacheComposition}
+				durationInFrames={LFU_CACHE_TOTAL_FRAMES}
 				fps={30}
 				width={1920}
 				height={1080}
