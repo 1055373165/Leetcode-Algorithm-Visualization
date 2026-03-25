@@ -160,8 +160,8 @@ export const RemotionRoot: React.FC = () => {
 				component={ZigzagConversionComposition}
 				durationInFrames={ZIGZAG_CONVERSION_TOTAL_FRAMES}
 				fps={30}
-				width={1280}
-				height={720}
+				width={1920}
+				height={1080}
 			/>
 		</>
 	);

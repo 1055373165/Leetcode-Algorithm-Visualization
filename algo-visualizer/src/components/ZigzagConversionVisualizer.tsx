@@ -50,29 +50,29 @@ export const ZigzagConversionVisualizer: React.FC<ZigzagConversionVisualizerProp
     };
 
     const numCols = step.grid[0]?.length || 0;
-    const cellSize = Math.min(44, Math.floor(1100 / Math.max(numCols, 1)));
-    const fontSize = Math.min(20, cellSize - 8);
+    const cellSize = Math.min(64, Math.floor(1600 / Math.max(numCols, 1)));
+    const fontSize = Math.min(28, cellSize - 10);
 
     return (
         <AbsoluteFill style={{
             backgroundColor: '#1a1a2e',
             color: 'white',
             fontFamily: "'Fira Code', monospace",
-            padding: 40,
+            padding: 60,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
         }}>
             {/* Title */}
-            <h1 style={{fontSize: 32, marginBottom: 16, color: '#e0e0e0'}}>{title}</h1>
+            <h1 style={{fontSize: 48, marginBottom: 24, color: '#e0e0e0'}}>{title}</h1>
 
             {/* Input string */}
-            <div style={{display: 'flex', gap: 3, alignItems: 'center', marginBottom: 20}}>
-                <span style={{color: '#aaa', fontSize: 16, marginRight: 10}}>Input:</span>
+            <div style={{display: 'flex', gap: 5, alignItems: 'center', marginBottom: 30}}>
+                <span style={{color: '#aaa', fontSize: 24, marginRight: 16}}>Input:</span>
                 {input.split('').map((ch, idx) => (
                     <div key={idx} style={{
-                        width: 28,
-                        height: 32,
+                        width: 42,
+                        height: 48,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -81,8 +81,8 @@ export const ZigzagConversionVisualizer: React.FC<ZigzagConversionVisualizerProp
                             : idx <= (step.phase === 'place' ? step.charIndex : input.length)
                                 ? '#2a2a4a'
                                 : '#1e1e3a',
-                        borderRadius: 3,
-                        fontSize: 15,
+                        borderRadius: 5,
+                        fontSize: 22,
                         border: step.phase === 'place' && idx === step.charIndex
                             ? '2px solid #fff'
                             : '1px solid #333',
@@ -101,31 +101,31 @@ export const ZigzagConversionVisualizer: React.FC<ZigzagConversionVisualizerProp
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 3,
+                gap: 5,
             }}>
-                <span style={{color: '#888', fontSize: 14, marginBottom: 8}}>
-                    Z-shape Grid (numRows={numRows})
+                <span style={{color: '#888', fontSize: 20, marginBottom: 12}}>
+                    Z-shape Grid (numRows={numRows}, cycle={2 * (numRows - 1)})
                 </span>
                 {step.grid.map((row, r) => (
                     <div key={r} style={{
                         display: 'flex',
-                        gap: 3,
+                        gap: 5,
                         alignItems: 'center',
                         backgroundColor: step.phase === 'read' && r === step.currentRow
                             ? 'rgba(76, 175, 80, 0.1)'
                             : 'transparent',
-                        borderRadius: 4,
-                        padding: '2px 4px',
+                        borderRadius: 6,
+                        padding: '3px 8px',
                         border: step.phase === 'read' && r === step.currentRow
-                            ? '1px solid rgba(76, 175, 80, 0.4)'
-                            : '1px solid transparent',
+                            ? '2px solid rgba(76, 175, 80, 0.5)'
+                            : '2px solid transparent',
                     }}>
                         <span style={{
                             color: step.phase === 'read' && r === step.currentRow ? '#4caf50' : '#555',
-                            fontSize: 12,
-                            width: 20,
+                            fontSize: 18,
+                            width: 30,
                             textAlign: 'right',
-                            marginRight: 4,
+                            marginRight: 8,
                         }}>
                             {r}
                         </span>
@@ -150,10 +150,10 @@ export const ZigzagConversionVisualizer: React.FC<ZigzagConversionVisualizerProp
                                             : cell !== null
                                                 ? '#2a2a4a'
                                                 : '#1a1a2e',
-                                    borderRadius: 3,
+                                    borderRadius: 5,
                                     fontSize,
                                     border: isCurrent
-                                        ? '2px solid #fff'
+                                        ? '3px solid #fff'
                                         : cell !== null
                                             ? '1px solid #444'
                                             : '1px solid #222',
@@ -174,26 +174,26 @@ export const ZigzagConversionVisualizer: React.FC<ZigzagConversionVisualizerProp
 
             {/* Result */}
             <div style={{
-                marginTop: 16,
-                marginBottom: 8,
+                marginTop: 24,
+                marginBottom: 12,
                 display: 'flex',
-                gap: 3,
+                gap: 5,
                 alignItems: 'center',
-                minHeight: 42,
+                minHeight: 56,
             }}>
-                <span style={{color: '#aaa', fontSize: 16, marginRight: 10}}>Result:</span>
+                <span style={{color: '#aaa', fontSize: 24, marginRight: 16}}>Result:</span>
                 {step.result.split('').map((ch, idx) => (
                     <div key={idx} style={{
-                        width: 28,
-                        height: 32,
+                        width: 42,
+                        height: 48,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         backgroundColor: idx === step.result.length - 1 && step.phase === 'read'
                             ? '#4caf50'
                             : '#1b3a4b',
-                        borderRadius: 3,
-                        fontSize: 15,
+                        borderRadius: 5,
+                        fontSize: 22,
                         color: '#4fc3f7',
                         border: '1px solid #2196f3',
                     }}>
@@ -201,19 +201,19 @@ export const ZigzagConversionVisualizer: React.FC<ZigzagConversionVisualizerProp
                     </div>
                 ))}
                 {step.result.length === 0 && (
-                    <span style={{color: '#555', fontSize: 14}}>Empty</span>
+                    <span style={{color: '#555', fontSize: 20}}>Empty</span>
                 )}
             </div>
 
             {/* Description */}
             <div style={{
-                marginBottom: 20,
+                marginBottom: 24,
                 backgroundColor: '#2a2a4a',
-                padding: '12px 20px',
-                borderRadius: 8,
+                padding: '16px 32px',
+                borderRadius: 10,
                 width: '90%',
                 textAlign: 'center',
-                fontSize: 20,
+                fontSize: 28,
                 color: '#e0e0e0',
                 border: `2px solid ${phaseColor[step.phase] || '#555'}`,
             }}>
