@@ -8,6 +8,14 @@ import {ShuffleArrayComposition} from './compositions/ShuffleArray';
 import {PalindromePartitioningComposition} from './compositions/PalindromePartitioning';
 import {RestoreIpAddressesComposition} from './compositions/RestoreIpAddresses';
 import {
+	LRUCacheComposition,
+	LRU_CACHE_TOTAL_FRAMES,
+} from './compositions/LRUCache';
+import {
+	TwoSumComposition,
+	TWO_SUM_TOTAL_FRAMES,
+} from './compositions/TwoSum';
+import {
 	ImplementTrieComposition,
 	IMPLEMENT_TRIE_TOTAL_FRAMES,
 } from './compositions/ImplementTrie';
@@ -89,6 +97,22 @@ export const RemotionRoot: React.FC = () => {
 				fps={30}
 				width={1280}
 				height={720}
+			/>
+			<Composition
+				id="LRUCache"
+				component={LRUCacheComposition}
+				durationInFrames={LRU_CACHE_TOTAL_FRAMES}
+				fps={30}
+				width={1920}
+				height={1080}
+			/>
+			<Composition
+				id="TwoSum"
+				component={TwoSumComposition}
+				durationInFrames={TWO_SUM_TOTAL_FRAMES}
+				fps={30}
+				width={1920}
+				height={1080}
 			/>
 
 			<Composition
