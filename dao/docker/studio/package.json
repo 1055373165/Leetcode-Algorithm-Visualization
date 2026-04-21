@@ -1,0 +1,31 @@
+{
+  "name": "dao-studio",
+  "version": "0.1.0",
+  "description": "多主题技术视频工作室：输入主题 → AI 生成场景脚本 → 渲染视频 → 统一管理 + 间隔复习",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3333",
+    "build": "next build",
+    "start": "next start -p 3333",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@remotion/player": "^4.0.421",
+    "remotion": "^4.0.421",
+    "@anthropic-ai/sdk": "^0.33.1",
+    "openai": "^4.77.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/node": "^22.9.0",
+    "tailwindcss": "^3.4.14",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49"
+  }
+}

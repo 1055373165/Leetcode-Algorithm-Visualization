@@ -1,5 +1,8 @@
 import {Composition} from 'remotion';
 import {LongestSubstringComposition} from './compositions/LongestSubstring';
+import {LongestSubstringV2Composition} from './compositions/LongestSubstringV2';
+import {totalFrames} from './design';
+import {run as runLongestSubstring} from './algorithms/longestSubstring';
 import {LongestPalindromicSubstringComposition} from './compositions/LongestPalindromicSubstring';
 import {ContainerWithMostWaterComposition} from './compositions/ContainerWithMostWater';
 import {ThreeSumComposition} from './compositions/ThreeSum';
@@ -35,6 +38,15 @@ export const RemotionRoot: React.FC = () => {
 				id="LongestSubstring"
 				component={LongestSubstringComposition}
 				durationInFrames={600} // 13 steps * 1.5s * 30fps = 585
+				fps={30}
+				width={1280}
+				height={720}
+			/>
+			{/* V2 — rebuilt on the shared design system. See algo-visualizer/DESIGN.md. */}
+			<Composition
+				id="LongestSubstringV2"
+				component={LongestSubstringV2Composition}
+				durationInFrames={totalFrames(runLongestSubstring('abcabcbb'))}
 				fps={30}
 				width={1280}
 				height={720}
