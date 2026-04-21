@@ -1,5 +1,9 @@
 import {registerRoot, Composition} from 'remotion';
 import React from 'react';
+import {LongestSubstringComposition} from './compositions/LongestSubstring';
+import {LongestSubstringV2Composition} from './compositions/LongestSubstringV2';
+import {totalFrames} from './design';
+import {run as runLongestSubstring} from './algorithms/longestSubstring';
 import {FindAllAnagramsComposition} from './compositions/FindAllAnagrams';
 import {MinSubArrayLenComposition} from './compositions/MinSubArrayLen';
 import {MoveZeroesComposition} from './compositions/MoveZeroes';
@@ -15,6 +19,24 @@ import {ZigzagDualStackComposition} from './compositions/ZigzagDualStack';
 export const RemotionRoot: React.FC = () => {
 	return (
 		<>
+			{/* V1 (legacy snapshot-per-frame style, kept for A/B comparison). */}
+			<Composition
+				id="LongestSubstring"
+				component={LongestSubstringComposition}
+				durationInFrames={600}
+				fps={30}
+				width={1280}
+				height={720}
+			/>
+			{/* V2 — rebuilt on the shared design system. See algo-visualizer/DESIGN.md. */}
+			<Composition
+				id="LongestSubstringV2"
+				component={LongestSubstringV2Composition}
+				durationInFrames={totalFrames(runLongestSubstring('abcabcbb'))}
+				fps={30}
+				width={1280}
+				height={720}
+			/>
 			<Composition
 				id="FindAllAnagrams"
 				component={FindAllAnagramsComposition}

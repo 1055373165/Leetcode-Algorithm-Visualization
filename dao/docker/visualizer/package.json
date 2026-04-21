@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "remotion studio",
     "build:cpu": "remotion render CpuThrottle out/cpu-throttle.mp4",
-    "build:all": "remotion render"
+    "build:epoll": "remotion render GenericTopic out/generic-epoll.mp4",
+    "build:both": "npm run build:cpu && npm run build:epoll"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.421",
