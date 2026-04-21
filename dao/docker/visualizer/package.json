@@ -1,0 +1,21 @@
+{
+  "name": "docker-visualizer",
+  "version": "0.1.0",
+  "description": "Remotion 视频解析：Docker 底层技术（cgroup / namespace / chroot / overlayfs）",
+  "private": true,
+  "scripts": {
+    "dev": "remotion studio",
+    "build:cpu": "remotion render CpuThrottle out/cpu-throttle.mp4",
+    "build:all": "remotion render"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.421",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "remotion": "^4.0.421"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "typescript": "^5.6.3"
+  }
+}
