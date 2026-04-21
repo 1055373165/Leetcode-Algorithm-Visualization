@@ -10,10 +10,12 @@
     "build:both": "npm run build:cpu && npm run build:epoll"
   },
   "dependencies": {
-    "@remotion/cli": "^4.0.421",
+    "@remotion/cli": "4.0.450",
+    "@remotion/bundler": "4.0.450",
+    "@remotion/renderer": "4.0.450",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "remotion": "^4.0.421"
+    "remotion": "4.0.450"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",
