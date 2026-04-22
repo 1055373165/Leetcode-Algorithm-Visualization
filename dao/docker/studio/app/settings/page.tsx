@@ -11,7 +11,7 @@ import { PROVIDER_DISPLAY_NAMES, DEFAULT_MODELS } from '@/lib/llm';
 import type { ProviderId } from '@/lib/llm/types';
 import { exportAll, importAll } from '@/lib/storage';
 
-const PROVIDERS: ProviderId[] = ['anthropic', 'openai', 'ollama'];
+const PROVIDERS: ProviderId[] = ['anthropic', 'openai', 'ollama', 'nvidia'];
 
 /**
  * 设置页 · AI Provider 配置 + 数据导入导出
@@ -60,7 +60,7 @@ export default function SettingsPage() {
       {/* 当前 Provider 切换 */}
       <div className="bg-paper-raised border border-paper-rule rounded-xl p-6 mb-6">
         <h2 className="font-semibold text-paper-ink mb-4">当前使用</h2>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-3">
           {PROVIDERS.map((id) => {
             const isActive = settings.activeProvider === id;
             const hasKey = id === 'ollama' || !!settings.providers[id].apiKey;

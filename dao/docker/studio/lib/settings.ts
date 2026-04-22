@@ -1,7 +1,7 @@
 'use client';
 
 import type { ProviderConfig, ProviderId } from './llm/types';
-import { DEFAULT_MODELS } from './llm';
+import { DEFAULT_MODELS, LEGACY_MODEL_MIGRATIONS } from './llm';
 
 /**
  * 用户设置 · 本地存储
@@ -42,6 +42,12 @@ export function defaultSettings(): Settings {
         model: DEFAULT_MODELS.ollama,
         baseURL: 'http://localhost:11434',
       },
+      nvidia: {
+        id: 'nvidia',
+        name: 'NVIDIA',
+        model: DEFAULT_MODELS.nvidia,
+        baseURL: 'https://integrate.api.nvidia.com',
+      },
     },
   };
 }
@@ -54,14 +60,36 @@ export function getSettings(): Settings {
     const parsed = JSON.parse(raw) as Partial<Settings>;
     // 合并默认值，防止旧版本缺字段
     const def = defaultSettings();
-    return {
+    const merged: Settings = {
       activeProvider: parsed.activeProvider ?? def.activeProvider,
       providers: {
         anthropic: { ...def.providers.anthropic, ...parsed.providers?.anthropic },
         openai: { ...def.providers.openai, ...parsed.providers?.openai },
         ollama: { ...def.providers.ollama, ...parsed.providers?.ollama },
+        nvidia: { ...def.providers.nvidia, ...parsed.providers?.nvidia },
       },
     };
+
+    // 一次性迁移：把已知有问题的旧默认值替换成新默认值。
+    // 典型例子：nvidia 从 z-ai/glm-5.1 换成 deepseek-ai/deepseek-v3.1。
+    // 只迁移"恰好是旧默认"的 case，用户自己手动填过的模型保持不动。
+    let migrated = false;
+    for (const [providerId, mapping] of Object.entries(LEGACY_MODEL_MIGRATIONS)) {
+      if (!mapping) continue;
+      const pid = providerId as ProviderId;
+      const currentModel = merged.providers[pid].model;
+      const replacement = mapping[currentModel];
+      if (replacement) {
+        merged.providers[pid].model = replacement;
+        migrated = true;
+      }
+    }
+    if (migrated) {
+      // 写回去，防止下次加载又被同样迁移一遍
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+    }
+
+    return merged;
   } catch {
     return defaultSettings();
   }
