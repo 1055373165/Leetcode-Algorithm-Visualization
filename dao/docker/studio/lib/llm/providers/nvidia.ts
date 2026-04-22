@@ -8,10 +8,14 @@ import { streamOpenAiCompat } from './openai_compat';
  * NVIDIA AI Provider · 兼容 OpenAI SDK 的 NVIDIA 集成端点
  *
  * 端点: https://integrate.api.nvidia.com/v1/chat/completions
- * 支持模型（示例）:
- *   - deepseek-ai/deepseek-v3.1   （默认，非 thinking 模式流式最顺）
- *   - nvidia/llama-3.1-nemotron-70b-instruct
- *   - z-ai/glm-5.1                （需要关 thinking 才能流）
+ * 当前推荐模型（2026-04 curl 实测可用）:
+ *   - moonshotai/kimi-k2-instruct      （⭐默认。非 thinking，delta.content 直出，首字 1.3s）
+ *   - moonshotai/kimi-k2-thinking      （思考型，内容走 reasoning_content）
+ *   - nvidia/llama-3.3-nemotron-super-49b-v1.5（reasoning 型）
+ * 已知坏的模型：
+ *   - deepseek-ai/deepseek-v3.1        （2026-04-15 EOL，HTTP 410）
+ *   - deepseek-ai/deepseek-v3.2        （NIM 上 30 秒黑洞，fetch 永远挂，千万别选）
+ *   - z-ai/glm-5.1                     （流式默认开 thinking，首字要几分钟）
  *
  * NVIDIA 端点 100% 兼容 OpenAI 的 stream=true 格式，
  * 所以借用 streamOpenAiCompat 帮助器。
@@ -28,10 +32,12 @@ function buildThinkingDisableBody(model: string): Record<string, unknown> {
     return { thinking: { type: 'disabled' } };
   }
   if (m.includes('deepseek')) {
-    // DeepSeek V3.1 通过 chat_template_kwargs 切 non-thinking 模式
+    // DeepSeek V3.x 通过 chat_template_kwargs 切 non-thinking 模式
     return { chat_template_kwargs: { thinking: false } };
   }
-  // 其他模型（如 nemotron / llama）没有 hybrid-thinking 概念，不用管
+  // kimi / nemotron / llama 等没有 hybrid-thinking 概念，不用管。
+  // Kimi K2 instruct 就是非 thinking 的，K2 thinking 是专门的 reasoning 模型
+  // （用户选 thinking 变体就是想要 reasoning，不要这里擅自关掉）。
   return {};
 }
 export const nvidiaProvider: LLMProvider = {
@@ -73,7 +79,10 @@ export const nvidiaProvider: LLMProvider = {
       apiKey: config.apiKey,
       body: {
         model: config.model,
-        max_tokens: 8192,
+        // 目标视频 3-5 分钟、8-14 scenes，JSON 脚本比以往大很多；
+        // 加上推理模型 thinking 阶段也占 context，max_tokens 给宽松一点。
+        // DeepSeek V3.2 / GLM-5.1 上限都 ≥ 32K 输出，这里 20000 够用。
+        max_tokens: 20000,
         temperature: 1,
         top_p: 1,
         stream: true,

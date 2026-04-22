@@ -195,7 +195,7 @@ export default function NewTopicPage() {
         <span className="font-semibold text-paper-ink">
           8 种场景原语
         </span>{' '}
-        拼出一份 30-60 秒的视频解析脚本。
+        拼出一份 3-5 分钟的深度视频解析脚本。
       </p>
 
       {!hasApiKey && (
@@ -361,9 +361,9 @@ const StageIndicator: React.FC<{
 
       {!hasOutput && (
         <p className="text-sm text-paper-inkMuted leading-relaxed">
-          通常需要 20-60 秒。AI 会依次思考：
-          没有它之前是什么样 → 核心机制 → 设计决策 → 洞见金句。
-          这一步是质量的关键，不会让它偷懒。
+          通常需要 1-3 分钟。生成的视频目标时长是 3-5 分钟、8-14 个场景，
+          AI 会依次思考：没有它之前是什么样 → 历史锚点 → 核心机制 →
+          设计决策 → 洞见金句。这一步是质量的关键，不会让它偷懒。
         </p>
       )}
 

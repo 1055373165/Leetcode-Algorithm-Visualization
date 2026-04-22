@@ -44,16 +44,50 @@ export async function streamOpenAiCompat(args: {
     `[${provider}] fetch start endpoint=${endpoint} body.stream=${String(body.stream)}`,
   );
 
+  // 上游挂死保护：60s 拿不到 response headers 就 abort + 抛错。
+  // 真实场景下健康的推理请求首字在几百 ms ~ 几秒之间，60s 不回 header
+  // 一定不是"慢"，是"死"（之前 deepseek-v3.2 在 NIM 就是这种黑洞）。
+  // 拿到 headers 后就 clear 这个 timer —— 后续流式 token 可以慢慢吐，不受此限。
+  const HEADERS_TIMEOUT_MS = 60_000;
+  const ac = new AbortController();
+  const headersDeadline = setTimeout(() => {
+    console.warn(
+      `[${provider}] upstream没在 ${HEADERS_TIMEOUT_MS}ms 内返回 response headers，abort`,
+    );
+    ac.abort();
+  }, HEADERS_TIMEOUT_MS);
+
+  // 还没拿到 headers 之前，每 10s 打一条"still waiting"日志，
+  // 方便开发时判断是彻底死了还是只是慢。拿到 headers 就关。
+  const waitingTimer = setInterval(() => {
+    console.log(
+      `[${provider}] still waiting upstream headers, elapsed=${Date.now() - fetchStart}ms`,
+    );
+  }, 10_000);
+
   let response: Response;
   try {
     response = await fetch(endpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
+      signal: ac.signal,
     });
   } catch (e) {
+    clearTimeout(headersDeadline);
+    clearInterval(waitingTimer);
+    if (ac.signal.aborted) {
+      throw new LLMError(
+        `上游 ${HEADERS_TIMEOUT_MS / 1000}s 内没返回任何响应头（可能模型已下线或走了黑洞）。` +
+          `检查 provider 模型名是否有效，或换一个模型。endpoint=${endpoint}`,
+        provider,
+        e,
+      );
+    }
     throw new LLMError('网络请求失败', provider, e);
   }
+  clearTimeout(headersDeadline);
+  clearInterval(waitingTimer);
 
   console.log(
     `[${provider}] fetch headers back after ${Date.now() - fetchStart}ms status=${response.status}`,

@@ -24,20 +24,24 @@ export function getProvider(id: ProviderId): LLMProvider {
  * 各 provider 的默认建议模型。
  * 用户可以在设置页覆盖，但这是首次配置时的合理起点。
  *
- * NVIDIA 选 deepseek-v3.2 的原因：
- *   - DeepSeek 在 NIM 上的现役版本（v3.1 已于 2026-04-15 EOL）
- *   - 是 hybrid 模型，支持 think / non-think 切换
- *   - 我们在 nvidia.ts 里显式关掉 thinking，token 立即流
- *   - 长上下文、强指令跟随，拿来吐 JSON 脚本很合适
+ * NVIDIA 选 moonshotai/kimi-k2-instruct 的原因：
+ *   - 2026-04 curl 实测在 NIM 上健康：首字 1.3s、总 2.5s（对比 DeepSeek 家族当前全军覆没）
+ *   - 是 **非 thinking** 的 instruct 变体，delta.content 直接出正式答案，不需要关 thinking
+ *   - 1T 参数的 MoE 开源模型，指令跟随 + 长 JSON 输出质量够用
+ *   - 走标准 OpenAI 流式协议（data: {...} / data: [DONE]），和我们的 streamOpenAiCompat 天生兼容
  *
- * 之前默认 z-ai/glm-5.1 在流式下默认开 thinking，浏览器
- * 要等几分钟才看到第一个 token，体验很差——已下线这个默认。
+ * 历史教训：
+ *   - z-ai/glm-5.1：流式默认开 thinking，浏览器等几分钟才看到第一个 token
+ *   - deepseek-ai/deepseek-v3.1：2026-04-15 EOL
+ *   - deepseek-ai/deepseek-v3.2：文档页存在，但 integrate.api.nvidia.com 上
+ *     curl 30 秒黑洞不回一个字节（既不是 404 也不是 410，就是纯粹挂死）。
+ *     我们的 fetch await 就永远挂在这里。
  */
 export const DEFAULT_MODELS: Record<ProviderId, string> = {
   anthropic: 'claude-3-5-sonnet-20241022',
   openai: 'gpt-4o',
   ollama: 'qwen2.5:14b',
-  nvidia: 'deepseek-ai/deepseek-v3.2',
+  nvidia: 'moonshotai/kimi-k2-instruct',
 };
 
 /**
@@ -51,6 +55,8 @@ export const LEGACY_MODEL_MIGRATIONS: Partial<Record<ProviderId, Record<string, 
     'z-ai/glm-5.1': DEFAULT_MODELS.nvidia,
     // v3.1 在 2026-04-15 被 NVIDIA NIM 下线（HTTP 410 Gone）
     'deepseek-ai/deepseek-v3.1': DEFAULT_MODELS.nvidia,
+    // v3.2 在 integrate.api.nvidia.com 上 30 秒黑洞，fetch 永远挂
+    'deepseek-ai/deepseek-v3.2': DEFAULT_MODELS.nvidia,
   },
 };
 

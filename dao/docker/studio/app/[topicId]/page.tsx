@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
 import {
   getTopic,
   updateNotes,
@@ -13,12 +12,7 @@ import {
 } from '@/lib/storage';
 import type { TopicScript } from '@/lib/schema';
 import { ReviewPanel } from '@/components/ReviewPanel';
-
-// Player 需要 window，禁用 SSR
-const ScriptPlayer = dynamic(
-  () => import('@/components/ScriptPlayer').then((m) => m.ScriptPlayer),
-  { ssr: false, loading: () => <PlayerSkeleton /> },
-);
+import { RenderedVideo } from '@/components/RenderedVideo';
 
 type Tab = 'player' | 'script' | 'notes';
 
@@ -34,10 +28,37 @@ export default function TopicDetailPage() {
   const [entry, setEntry] = useState<TopicEntry | null | undefined>(undefined);
   const [tab, setTab] = useState<Tab>('player');
 
+  const [renderStage, setRenderStage] = useState<
+    'idle' | 'rendering' | 'done' | 'error'
+  >('idle');
+  const [renderError, setRenderError] = useState<string>('');
+  const [renderUrl, setRenderUrl] = useState<string | null>(null);
+
   useEffect(() => {
     if (!params.topicId) return;
     const e = getTopic(params.topicId);
     setEntry(e);
+
+    // 页面载入时探测已存在的 MP4。renders/<topicId>.mp4 由 /api/render 生成，
+    // Next.js 会自动通过 public/ 静态路由 serve。HEAD 200 → 直接展示；
+    // HEAD 404 → 维持 idle 状态等用户点渲染。
+    // 用 HEAD 避免把 MP4 实际下一遍到内存里。
+    let cancelled = false;
+    const probeUrl = `/renders/${params.topicId}.mp4`;
+    fetch(probeUrl, { method: 'HEAD' })
+      .then((res) => {
+        if (cancelled) return;
+        if (res.ok) {
+          setRenderUrl(probeUrl);
+          setRenderStage('done');
+        }
+      })
+      .catch(() => {
+        /* 离线或网络异常时忽略，让用户手动触发渲染 */
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [params.topicId]);
 
   if (entry === undefined) {
@@ -64,6 +85,42 @@ export default function TopicDetailPage() {
     if (!confirm('确认删除这个主题？笔记和复习历史都会丢失。')) return;
     deleteTopic(entry!.script.id);
     router.push('/');
+  }
+
+  async function handleRenderMp4() {
+    if (renderStage === 'rendering') return;
+    setRenderStage('rendering');
+    setRenderError('');
+    setRenderUrl(null);
+
+    try {
+      const res = await fetch('/api/render', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          script: entry!.script,
+          topicId: entry!.script.id,
+        }),
+      });
+
+      const data = (await res.json()) as {
+        url?: string;
+        error?: string;
+      };
+
+      if (!res.ok || data.error) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+
+      // 附加 ?t=<当前时间戳> 作 cache-buster：
+      // URL 路径里的 topicId 永远相同，但 MP4 内容每次重渲染都会变。
+      // 没有这个后缀，浏览器和 <video> 元素会继续播放旧缓存版本。
+      setRenderUrl(data.url ? `${data.url}?t=${Date.now()}` : null);
+      setRenderStage('done');
+    } catch (e) {
+      setRenderError(e instanceof Error ? e.message : String(e));
+      setRenderStage('error');
+    }
   }
 
   return (
@@ -104,6 +161,35 @@ export default function TopicDetailPage() {
             </button>
           ))}
           <div className="flex-1" />
+          {renderStage === 'done' && renderUrl ? (
+            <a
+              href={renderUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs bg-paper-accentWarm text-white rounded-md px-3 py-1.5 font-medium hover:bg-paper-accentWarm/90 transition-colors mr-2"
+            >
+              下载 MP4
+            </a>
+          ) : (
+            <button
+              onClick={handleRenderMp4}
+              disabled={renderStage === 'rendering'}
+              className={
+                'text-xs rounded-md px-3 py-1.5 font-medium transition-colors mr-2 ' +
+                (renderStage === 'rendering'
+                  ? 'bg-paper-surface text-paper-inkMuted cursor-wait'
+                  : renderStage === 'error'
+                    ? 'bg-paper-blocked/10 text-paper-blocked hover:bg-paper-blocked/20'
+                    : 'bg-paper-accentCool text-white hover:bg-paper-accentCool/90')
+              }
+            >
+              {renderStage === 'rendering'
+                ? '渲染中…'
+                : renderStage === 'error'
+                  ? '重试导出'
+                  : '导出 MP4'}
+            </button>
+          )}
           <button
             onClick={handleDelete}
             className="text-xs text-paper-inkFaint hover:text-paper-blocked transition-colors px-3 py-1.5"
@@ -113,7 +199,19 @@ export default function TopicDetailPage() {
         </div>
 
         {/* Tab 内容 */}
-        {tab === 'player' && <ScriptPlayer script={entry.script} />}
+        {renderError && (
+          <div className="mb-4 p-3 rounded-md bg-paper-blocked/10 border border-paper-blocked/40 text-sm text-paper-blocked font-mono">
+            {renderError}
+          </div>
+        )}
+        {tab === 'player' && (
+          <RenderedVideo
+            script={entry.script}
+            videoUrl={renderUrl}
+            renderStage={renderStage}
+            onRequestRender={handleRenderMp4}
+          />
+        )}
         {tab === 'script' && (
           <ScriptEditor script={entry.script} onChange={refresh} />
         )}
@@ -168,12 +266,6 @@ const Row: React.FC<{ label: string; children: React.ReactNode }> = ({
   </div>
 );
 
-const PlayerSkeleton: React.FC = () => (
-  <div className="w-full aspect-video bg-paper-surface rounded-xl border border-paper-rule flex items-center justify-center text-paper-inkMuted">
-    加载播放器…
-  </div>
-);
-
 // ═══════════════════════════════════════════════════════════
 
 const ScriptEditor: React.FC<{
@@ -209,7 +301,7 @@ const ScriptEditor: React.FC<{
     <div>
       <div className="flex items-center justify-between mb-3">
         <div className="text-sm text-paper-inkMuted">
-          直接编辑 JSON。保存后可在"播放"tab 看到效果变化。
+          直接编辑 JSON。保存后切到"播放"tab 重新渲染 MP4 即可看到变化。
         </div>
         <div className="flex items-center gap-3">
           {dirty && <span className="text-xs text-paper-accentWarm">未保存</span>}
