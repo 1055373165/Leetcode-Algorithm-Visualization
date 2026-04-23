@@ -29,21 +29,31 @@ export const DataStructureScene: React.FC<
 > = ({ scene, progress }) => {
   const { entering } = phases(progress);
 
+  // Defensive fallback：LLM 偶尔会漏 nodes / edges 字段（schema 要求但没给）。
+  // 新生成的脚本会被 studio/lib/llm/parse.ts 的 validateSceneRequiredArrays 拦下，
+  // 但**已经保存在 storage 里的老数据**绕过 parse，直接走渲染——
+  // 这里兜空数组保证整支视频不会因为一个场景崩掉整体渲染。
+  // 代价：该场景会渲染成一块"只有 kicker/heading 的空白区"，至少能继续。
+  const nodes = scene.nodes ?? [];
+  const edges = scene.edges ?? [];
+
   const revealStart = 0.2;
   const revealEnd = 0.85;
   const revealSpan = revealEnd - revealStart;
-  const totalItems = scene.nodes.length + scene.edges.length;
+  const totalItems = nodes.length + edges.length;
 
   // 判断某节点/边是否应该已经显示
   const isVisible = (idx: number) => {
     if (scene.reveal === 'all_at_once') return progress >= revealStart;
+    // totalItems=0 时 t 会是 NaN，直接判不可见，避免 div/0 后续拿到 NaN
+    if (totalItems === 0) return false;
     const t = revealStart + (revealSpan * (idx + 1)) / totalItems;
     return progress >= t - 0.05;
   };
 
   // 自动布局：均匀分布在水平方向
   const canvas = { w: 1600, h: 540 };
-  const nodePositions = computeLayout(scene.nodes, canvas);
+  const nodePositions = computeLayout(nodes, canvas);
 
   return (
     <div
@@ -68,11 +78,11 @@ export const DataStructureScene: React.FC<
         style={{ alignSelf: 'center' }}
       >
         {/* 边先画（在节点下层） */}
-        {scene.edges.map((edge, idx) => {
+        {edges.map((edge, idx) => {
           const from = nodePositions.get(edge.from);
           const to = nodePositions.get(edge.to);
           if (!from || !to) return null;
-          const edgeIdx = scene.nodes.length + idx;
+          const edgeIdx = nodes.length + idx;
           const visible = isVisible(edgeIdx);
           if (!visible) return null;
           return <EdgeLine key={idx} from={from} to={to} edge={edge} />;
@@ -81,7 +91,7 @@ export const DataStructureScene: React.FC<
 
       {/* 节点绝对定位在 SVG 上面 */}
       <div style={{ position: 'relative', width: canvas.w, height: 0, alignSelf: 'center' }}>
-        {scene.nodes.map((node, idx) => {
+        {nodes.map((node, idx) => {
           const pos = nodePositions.get(node.id);
           if (!pos) return null;
           const visible = isVisible(idx);
