@@ -42,7 +42,7 @@ function buildThinkingDisableBody(model: string): Record<string, unknown> {
 }
 export const nvidiaProvider: LLMProvider = {
   id: 'nvidia',
-  async generateStream(topic, config, onToken) {
+  async generateStream(topic, config, onToken, options) {
     if (!config.apiKey) {
       throw new LLMError('NVIDIA API key 未配置', 'nvidia');
     }
@@ -50,7 +50,7 @@ export const nvidiaProvider: LLMProvider = {
     const endpoint =
       (config.baseURL ?? 'https://integrate.api.nvidia.com') +
       '/v1/chat/completions';
-    const userPrompt = buildUserPrompt(topic);
+    const userPrompt = options?.userPrompt ?? buildUserPrompt(topic);
 
     // NVIDIA integrate 上不少模型是 hybrid reasoning 模型，
     // 默认开启 thinking。而 thinking 阶段的 token 走的是

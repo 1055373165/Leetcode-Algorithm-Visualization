@@ -35,9 +35,45 @@ import { encodeSseEvent } from '@/lib/sse';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+/**
+ * 把 LLMError.cause 序列化成前端能安全展示的形状。
+ * cause 在 parse.ts 里是 plain object（含 rawHead/rawTail/jsonHead/stage 等），
+ * 但也可能是 Error（网络错）或 undefined。统一一下：
+ *   - plain object → 过滤掉 undefined、长字符串截断到 1KB（避免 SSE 事件过大）
+ *   - Error        → { errorMessage, stack 前 500 字 }
+ *   - 其他         → { value: String(x) } 或 undefined
+ */
+function serializeCause(cause: unknown): Record<string, unknown> | undefined {
+  if (cause == null) return undefined;
+  if (cause instanceof Error) {
+    return {
+      errorMessage: cause.message,
+      errorStack: cause.stack?.slice(0, 500),
+    };
+  }
+  if (typeof cause !== 'object') {
+    return { value: String(cause) };
+  }
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(cause as Record<string, unknown>)) {
+    if (v === undefined) continue;
+    if (typeof v === 'string' && v.length > 1024) {
+      out[k] = v.slice(0, 1024) + '…[truncated]';
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
 type GenerateRequestBody = {
   topic?: unknown;
   providerConfig?: unknown;
+  /**
+   * 前端渲染完占位符后的 user prompt。可选——没传的话 provider fallback 到
+   * 内置 buildUserPrompt 分支，保持向后兼容。
+   */
+  userPrompt?: unknown;
 };
 
 export async function POST(req: NextRequest) {
@@ -59,6 +95,20 @@ export async function POST(req: NextRequest) {
       { error: 'providerConfig 缺失或格式错误' },
       { status: 400 },
     );
+  }
+
+  // userPrompt 是前端渲染完占位符后的最终文本。留空合法，provider 会 fallback。
+  // 做一次长度上限检查，避免被投毒塞 100MB 进来。
+  const MAX_USER_PROMPT_LEN = 64 * 1024;
+  let userPrompt: string | undefined;
+  if (typeof body.userPrompt === 'string') {
+    if (body.userPrompt.length > MAX_USER_PROMPT_LEN) {
+      return NextResponse.json(
+        { error: `userPrompt 过长（${body.userPrompt.length} > ${MAX_USER_PROMPT_LEN} chars）` },
+        { status: 400 },
+      );
+    }
+    userPrompt = body.userPrompt;
   }
 
   const provider = getProvider(providerConfig.id);
@@ -103,7 +153,10 @@ export async function POST(req: NextRequest) {
       }, 2000);
 
       try {
-        console.log(`${tag} calling provider.generateStream after ${Date.now() - t0}ms`);
+        console.log(
+          `${tag} calling provider.generateStream after ${Date.now() - t0}ms, ` +
+            `userPromptLen=${userPrompt?.length ?? 'fallback'}`,
+        );
         const result = await provider.generateStream(
           topic,
           providerConfig,
@@ -116,6 +169,7 @@ export async function POST(req: NextRequest) {
               emit('token', chunk);
             }
           },
+          { userPrompt },
         );
 
         // 若 LLM 给的 id 不太合适（比如重复或太长），我们重新 slug 一下
@@ -129,14 +183,24 @@ export async function POST(req: NextRequest) {
         );
         emit('done', result);
       } catch (e) {
-        console.error(
-          `${tag} generateStream failed after ${Date.now() - t0}ms:`,
-          e instanceof Error ? e.message : e,
-        );
+        // 日志：把 LLMError 的 cause（里面有 rawHead/rawTail/jsonHead 等片段）
+        // 一起打出来，这样 parse 失败可以直接看到 Kimi/DeepSeek 实际吐了什么。
+        // 没有这层日志，"JSON.parse 失败" 就是一句空话，完全没法诊断。
+        const elapsed = Date.now() - t0;
         if (e instanceof LLMError) {
-          emit('error', { error: e.message, provider: e.provider });
+          console.error(
+            `${tag} generateStream failed after ${elapsed}ms: ${e.message}`,
+            e.cause ? { cause: e.cause } : '',
+          );
+          // 把 cause 里的 snippet 也带给前端，前端错误面板要显示给用户
+          emit('error', {
+            error: e.message,
+            provider: e.provider,
+            details: serializeCause(e.cause),
+          });
         } else {
           const msg = e instanceof Error ? e.message : String(e);
+          console.error(`${tag} generateStream failed after ${elapsed}ms:`, e);
           emit('error', { error: `内部错误：${msg}` });
         }
       } finally {

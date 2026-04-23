@@ -145,7 +145,13 @@ export type DecisionNode = {
   id: string;
   text: string;
   kind: 'condition' | 'action' | 'outcome';
-  branches: { to: string; label: string }[];
+  /**
+   * 子节点引用 + 分支标签。可选：
+   * - condition/action 节点会填
+   * - outcome（终点）节点语义上没下游，LLM 经常省略
+   * 两边 schema 保持一致；组件侧用 `?.find(...)` 兜底。
+   */
+  branches?: { to: string; label: string }[];
   tone?: 'good' | 'bad' | 'neutral';
 };
 

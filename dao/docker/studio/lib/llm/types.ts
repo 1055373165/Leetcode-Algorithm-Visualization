@@ -44,6 +44,21 @@ export type StreamCallback = (chunk: {
   kind?: 'content' | 'reasoning';
 }) => void;
 
+/**
+ * 调用 LLM 的运行时选项。非必填，全部留默认 provider 行为。
+ */
+export type GenerateOptions = {
+  /**
+   * 前端传入的 user prompt（已做过占位符替换，例如 `{{topic}}` 已填）。
+   * 如果不传，provider 会 fallback 到 lib/llm/prompt.ts 的 buildUserPrompt(topic)，
+   * 保持与旧调用点的向后兼容。
+   *
+   * SYSTEM_PROMPT 始终由 lib/llm/prompt.ts 提供，前端不能改——
+   * 它承担"把输出钉死到 TopicScript schema"的职责。
+   */
+  userPrompt?: string;
+};
+
 export type LLMProvider = {
   id: ProviderId;
   /**
@@ -58,6 +73,7 @@ export type LLMProvider = {
     topic: string,
     config: ProviderConfig,
     onToken: StreamCallback,
+    options?: GenerateOptions,
   ): Promise<GenerateResult>;
 };
 

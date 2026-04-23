@@ -24,14 +24,15 @@ import { iterSse } from '../../sse';
  */
 export const anthropicProvider: LLMProvider = {
   id: 'anthropic',
-  async generateStream(topic, config, onToken) {
+  async generateStream(topic, config, onToken, options) {
     if (!config.apiKey) {
       throw new LLMError('Anthropic API key 未配置', 'anthropic');
     }
 
     const endpoint =
       (config.baseURL ?? 'https://api.anthropic.com') + '/v1/messages';
-    const userPrompt = buildUserPrompt(topic);
+    // 前端传了就用前端的（已做过占位符替换）；没传 fallback 到内置判断
+    const userPrompt = options?.userPrompt ?? buildUserPrompt(topic);
 
     const body = {
       model: config.model,

@@ -16,6 +16,7 @@ export const Nav: React.FC = () => {
         <nav className="flex items-center gap-1">
           <NavLink href="/">主题库</NavLink>
           <NavLink href="/new" highlight>+ 新建</NavLink>
+          <NavLink href="/prompts">提示词</NavLink>
           <NavLink href="/settings">设置</NavLink>
         </nav>
       </div>

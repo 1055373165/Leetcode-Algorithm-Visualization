@@ -19,9 +19,9 @@ import { iterLines } from '../../sse';
  */
 export const ollamaProvider: LLMProvider = {
   id: 'ollama',
-  async generateStream(topic, config, onToken) {
+  async generateStream(topic, config, onToken, options) {
     const endpoint = (config.baseURL ?? 'http://localhost:11434') + '/api/chat';
-    const userPrompt = buildUserPrompt(topic);
+    const userPrompt = options?.userPrompt ?? buildUserPrompt(topic);
 
     const body = {
       model: config.model,

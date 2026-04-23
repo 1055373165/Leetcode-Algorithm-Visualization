@@ -20,14 +20,14 @@ import { streamOpenAiCompat } from './openai_compat';
  */
 export const openaiProvider: LLMProvider = {
   id: 'openai',
-  async generateStream(topic, config, onToken) {
+  async generateStream(topic, config, onToken, options) {
     if (!config.apiKey) {
       throw new LLMError('OpenAI API key 未配置', 'openai');
     }
 
     const endpoint =
       (config.baseURL ?? 'https://api.openai.com') + '/v1/chat/completions';
-    const userPrompt = buildUserPrompt(topic);
+    const userPrompt = options?.userPrompt ?? buildUserPrompt(topic);
 
     const { rawText, usage } = await streamOpenAiCompat({
       provider: 'openai',

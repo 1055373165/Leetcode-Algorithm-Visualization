@@ -8,6 +8,17 @@ import { PROVIDER_DISPLAY_NAMES } from '@/lib/llm';
 import { saveTopic } from '@/lib/storage';
 import type { TopicScript } from '@/lib/schema';
 import { iterSse } from '@/lib/sse';
+import {
+  listPrompts,
+  getActivePromptId,
+  setActivePromptId,
+  renderTemplate,
+  getPromptVars,
+  savePromptVars,
+  ADVANCED_VARIABLES,
+  type PromptTemplate,
+  type PromptVars,
+} from '@/lib/prompts';
 
 /**
  * 新建主题页
@@ -32,10 +43,23 @@ export default function NewTopicPage() {
   const router = useRouter();
   const [topic, setTopic] = useState('');
   const [settings, setSettings] = useState<Settings | null>(null);
+  // 模板列表 + 当前选中。每次 /prompts 页改动会触发 prompts-changed 事件，
+  // 这里监听着自动刷新。避免用户改完回来还看到旧数据。
+  const [prompts, setPrompts] = useState<PromptTemplate[]>([]);
+  const [activePromptId, setActivePromptIdState] = useState<string>('');
+  // 高级变量（duration / language / audience 等）。持久化到 localStorage，
+  // 这样用户一次设定后不用每次重填。默认折叠，避免干扰主流程。
+  const [promptVars, setPromptVars] = useState<PromptVars>({});
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [stage, setStage] = useState<
     'idle' | 'generating' | 'saving' | 'error'
   >('idle');
   const [errorMsg, setErrorMsg] = useState<string>('');
+  // 错误细节：后端 parse 失败时会带 { stage, rawHead, rawTail, jsonHead... }
+  // 直接展示给用户，比干瘪的 "JSON.parse 失败" 有用得多
+  const [errorDetails, setErrorDetails] = useState<Record<string, unknown> | null>(
+    null,
+  );
   const [streamText, setStreamText] = useState<string>('');
   // 推理型模型（DeepSeek V3.2 / GLM 等）会先吐 reasoning 再吐 content；
   // 我们单独展示 reasoning，让用户看到"它在思考什么"。
@@ -47,16 +71,41 @@ export default function NewTopicPage() {
 
   useEffect(() => {
     setSettings(getSettings());
+    const refreshPrompts = () => {
+      setPrompts(listPrompts());
+      setActivePromptIdState(getActivePromptId());
+    };
+    const refreshVars = () => setPromptVars(getPromptVars());
+    refreshPrompts();
+    refreshVars();
+    // /prompts 页面做增删改时会 dispatch 这两个事件，我们同步更新 UI
+    window.addEventListener('dao-studio:prompts-changed', refreshPrompts);
+    window.addEventListener('dao-studio:prompt-vars-changed', refreshVars);
     return () => {
-      // 页面卸载时取消还在跑的流
+      window.removeEventListener('dao-studio:prompts-changed', refreshPrompts);
+      window.removeEventListener('dao-studio:prompt-vars-changed', refreshVars);
       abortRef.current?.abort();
     };
   }, []);
+
+  function handleSelectPrompt(id: string) {
+    setActivePromptIdState(id);
+    setActivePromptId(id); // 持久化到 localStorage
+  }
+
+  function handleVarChange(key: string, value: string) {
+    setPromptVars((prev) => {
+      const next = { ...prev, [key]: value };
+      savePromptVars(next);
+      return next;
+    });
+  }
 
   async function handleGenerate() {
     if (!topic.trim() || !settings) return;
     setStage('generating');
     setErrorMsg('');
+    setErrorDetails(null);
     setStreamText('');
     setReasoningText('');
     setPingInfo(null);
@@ -66,10 +115,23 @@ export default function NewTopicPage() {
 
     try {
       const providerConfig = settings.providers[settings.activeProvider];
+      // 前端负责占位符渲染——把选中模板里的所有 {{xxx}} 填成实际值。
+      // 这样后端 provider 只需把字符串原样发给 LLM，职责清晰。
+      // 变量字典：高级变量 + topic（topic 覆盖，因为它永远从主输入框来）
+      const activeTpl = prompts.find((p) => p.id === activePromptId) ?? prompts[0];
+      const vars = { ...promptVars, topic: topic.trim() };
+      const userPrompt = activeTpl
+        ? renderTemplate(activeTpl.userPromptTemplate, vars)
+        : undefined;
+
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ topic: topic.trim(), providerConfig }),
+        body: JSON.stringify({
+          topic: topic.trim(),
+          providerConfig,
+          userPrompt,
+        }),
         signal: abort.signal,
       });
 
@@ -147,8 +209,12 @@ export default function NewTopicPage() {
             const errData = JSON.parse(evt.data) as {
               error?: string;
               provider?: string;
+              details?: Record<string, unknown>;
             };
             sawError = errData.error ?? '未知错误';
+            // 保存 details 供错误面板展示。用 ref-free 的办法：直接 setState，
+            // 因为错误事件后 for-loop 会 break，setState 时机来得及。
+            if (errData.details) setErrorDetails(errData.details);
             break;
           }
         }
@@ -209,10 +275,56 @@ export default function NewTopicPage() {
       )}
 
       <div className="bg-paper-raised rounded-xl border border-paper-rule shadow-paper p-6">
-        <label className="block mb-2 text-sm font-semibold text-paper-inkSoft uppercase tracking-[0.08em]">
+        {/* 模板选择：决定用哪套 user prompt 框架去讲这个主题。
+            内置的"算法题深度解析"/"系统技术深度讲解"是历史行为复刻；
+            用户在 /prompts 新增的自定义模板会排在内置之后。 */}
+        <div className="mb-5 pb-5 border-b border-paper-rule">
+          <div className="flex items-center justify-between mb-2">
+            <label
+              htmlFor="prompt-select"
+              className="text-sm font-semibold text-paper-inkSoft uppercase tracking-[0.08em]"
+            >
+              提示词模板
+            </label>
+            <Link
+              href="/prompts"
+              className="text-xs underline text-paper-inkFaint hover:text-paper-inkSoft"
+            >
+              管理模板 →
+            </Link>
+          </div>
+          <select
+            id="prompt-select"
+            value={activePromptId}
+            onChange={(e) => handleSelectPrompt(e.target.value)}
+            disabled={stage === 'generating' || stage === 'saving'}
+            className="w-full px-3 py-2.5 bg-paper-bg border border-paper-rule rounded-lg text-paper-ink text-sm focus:outline-none focus:border-paper-accentWarm focus:ring-2 focus:ring-paper-accentWarm/20"
+          >
+            {prompts.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.builtin ? '◆ ' : '✎ '}
+                {p.name}
+              </option>
+            ))}
+          </select>
+          {(() => {
+            const active = prompts.find((p) => p.id === activePromptId);
+            return active?.description ? (
+              <p className="mt-2 text-xs text-paper-inkMuted leading-relaxed">
+                {active.description}
+              </p>
+            ) : null;
+          })()}
+        </div>
+
+        <label
+          htmlFor="topic-input"
+          className="block mb-2 text-sm font-semibold text-paper-inkSoft uppercase tracking-[0.08em]"
+        >
           技术主题
         </label>
         <input
+          id="topic-input"
           type="text"
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
@@ -223,6 +335,56 @@ export default function NewTopicPage() {
             if (e.key === 'Enter' && hasApiKey) handleGenerate();
           }}
         />
+
+        {/* 高级变量 · 折叠区。默认折叠避免挤主流程；用户一次填好长期持久化 */}
+        {ADVANCED_VARIABLES.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-paper-rule">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((s) => !s)}
+              className="flex items-center gap-2 text-xs text-paper-inkMuted hover:text-paper-ink"
+            >
+              <span className="inline-block w-3 text-paper-inkFaint">
+                {showAdvanced ? '▾' : '▸'}
+              </span>
+              高级变量（{ADVANCED_VARIABLES.map((v) => `{{${v.key}}}`).join(' · ')}）
+              <span className="text-paper-inkFaint">
+                · 仅当模板里用到时才生效
+              </span>
+            </button>
+            {showAdvanced && (
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+                {ADVANCED_VARIABLES.map((v) => (
+                  <div key={v.key}>
+                    <label
+                      htmlFor={`var-${v.key}`}
+                      className="block text-xs text-paper-inkSoft mb-1"
+                    >
+                      {v.label}{' '}
+                      <code className="font-mono text-[10px] text-paper-inkFaint">
+                        {`{{${v.key}}}`}
+                      </code>
+                    </label>
+                    <input
+                      id={`var-${v.key}`}
+                      type="text"
+                      value={promptVars[v.key] ?? ''}
+                      onChange={(e) => handleVarChange(v.key, e.target.value)}
+                      disabled={stage === 'generating' || stage === 'saving'}
+                      placeholder={v.placeholder}
+                      className="w-full px-2.5 py-1.5 bg-paper-bg border border-paper-rule rounded text-paper-ink text-sm focus:outline-none focus:border-paper-accentWarm focus:ring-1 focus:ring-paper-accentWarm/30"
+                    />
+                    {v.hint && (
+                      <p className="mt-1 text-[11px] text-paper-inkFaint leading-snug">
+                        {v.hint}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center justify-between mt-4">
           <div className="text-sm text-paper-inkMuted">
@@ -282,6 +444,85 @@ export default function NewTopicPage() {
         <div className="mt-6 p-4 rounded-lg bg-paper-blocked/10 border border-paper-blocked text-paper-ink">
           <div className="font-semibold text-paper-blocked mb-1">生成失败</div>
           <div className="text-sm font-mono text-paper-inkSoft">{errorMsg}</div>
+
+          {/* 细节：后端 parse 失败会带原始片段，直接展出比藏起来有用得多。
+              用折叠的 <details> 避免长文本把失败区撑得太高。 */}
+          {errorDetails && (
+            <details className="mt-3 text-xs">
+              <summary className="cursor-pointer text-paper-inkMuted hover:text-paper-ink select-none">
+                展开诊断信息（模型实际返回的片段）
+              </summary>
+              <div className="mt-2 space-y-2 font-mono">
+                {errorDetails.stage != null && (
+                  <div>
+                    <span className="text-paper-inkFaint">stage: </span>
+                    <span className="text-paper-ink">
+                      {String(errorDetails.stage)}
+                    </span>
+                  </div>
+                )}
+                {errorDetails.parseError != null && (
+                  <div>
+                    <span className="text-paper-inkFaint">parseError: </span>
+                    <span className="text-paper-ink">
+                      {String(errorDetails.parseError)}
+                    </span>
+                  </div>
+                )}
+                {typeof errorDetails.errorContext === 'string' && (
+                  <div>
+                    <div className="text-paper-inkFaint mb-1">
+                      errorContext（▶X◀ 是报错位置）：
+                    </div>
+                    <pre className="p-2 bg-paper-bg border border-paper-rule rounded whitespace-pre-wrap break-words max-h-40 overflow-auto">
+                      {errorDetails.errorContext}
+                    </pre>
+                  </div>
+                )}
+                {errorDetails.rawLen != null && (
+                  <div>
+                    <span className="text-paper-inkFaint">rawLen: </span>
+                    <span className="text-paper-ink">
+                      {String(errorDetails.rawLen)}
+                    </span>
+                  </div>
+                )}
+                {typeof errorDetails.rawHead === 'string' && (
+                  <div>
+                    <div className="text-paper-inkFaint mb-1">rawHead:</div>
+                    <pre className="p-2 bg-paper-bg border border-paper-rule rounded whitespace-pre-wrap break-words max-h-40 overflow-auto">
+                      {errorDetails.rawHead}
+                    </pre>
+                  </div>
+                )}
+                {typeof errorDetails.rawTail === 'string' && (
+                  <div>
+                    <div className="text-paper-inkFaint mb-1">rawTail:</div>
+                    <pre className="p-2 bg-paper-bg border border-paper-rule rounded whitespace-pre-wrap break-words max-h-40 overflow-auto">
+                      {errorDetails.rawTail}
+                    </pre>
+                  </div>
+                )}
+                {typeof errorDetails.jsonHead === 'string' && (
+                  <div>
+                    <div className="text-paper-inkFaint mb-1">jsonHead:</div>
+                    <pre className="p-2 bg-paper-bg border border-paper-rule rounded whitespace-pre-wrap break-words max-h-40 overflow-auto">
+                      {errorDetails.jsonHead}
+                    </pre>
+                  </div>
+                )}
+                {typeof errorDetails.jsonTail === 'string' && (
+                  <div>
+                    <div className="text-paper-inkFaint mb-1">jsonTail:</div>
+                    <pre className="p-2 bg-paper-bg border border-paper-rule rounded whitespace-pre-wrap break-words max-h-40 overflow-auto">
+                      {errorDetails.jsonTail}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </details>
+          )}
+
           <button
             onClick={() => setStage('idle')}
             className="mt-3 text-sm underline text-paper-inkMuted hover:text-paper-ink"
