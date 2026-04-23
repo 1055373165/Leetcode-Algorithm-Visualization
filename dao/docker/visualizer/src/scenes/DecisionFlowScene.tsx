@@ -78,10 +78,13 @@ export const DecisionFlowScene: React.FC<
             { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' },
           );
 
-          // 从上一节点到当前节点的分支标签
+          // 从上一节点到当前节点的分支标签。
+          // 注意：Kimi/Claude 经常给 outcome（终点）节点省略 branches 字段——
+          // 语义上这是对的（终点没下游）。所以 prev.branches 要再加一层 ?.，
+          // 仅靠 prev?. 只能防 prev 本身是 undefined。
           const prev = idx > 0 ? nodeMap.get(path[idx - 1]) : null;
           const branchLabel =
-            prev?.branches.find((b) => b.to === id)?.label ?? '';
+            prev?.branches?.find((b) => b.to === id)?.label ?? '';
 
           return (
             <React.Fragment key={id}>

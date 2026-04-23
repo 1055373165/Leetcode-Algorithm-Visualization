@@ -160,8 +160,13 @@ export type DecisionNode = {
   text: string;
   /** 节点类型 */
   kind: 'condition' | 'action' | 'outcome';
-  /** 子节点引用 + 分支标签 */
-  branches: { to: string; label: string }[];
+  /**
+   * 子节点引用 + 分支标签。可选：
+   * - condition/action 节点会填
+   * - outcome（终点）节点语义上就没下游，经常省略
+   * LLM 按这个准则生成最自然，运行时组件用 `?.find(...)` 兜底。
+   */
+  branches?: { to: string; label: string }[];
   /** 结果节点的语义色（仅当 kind === 'outcome' 时生效） */
   tone?: 'good' | 'bad' | 'neutral';
 };
