@@ -15,6 +15,7 @@ import {ImplementTrieComposition} from './compositions/ImplementTrie';
 import {ZigzagLevelOrderComposition} from './compositions/ZigzagLevelOrder';
 import {SlidingWindowMaxComposition} from './compositions/SlidingWindowMax';
 import {ZigzagDualStackComposition} from './compositions/ZigzagDualStack';
+import {MedianOfTwoSortedArraysComposition, stepsCount as medianStepsCount} from './compositions/MedianOfTwoSortedArrays';
 
 export const RemotionRoot: React.FC = () => {
 	return (
@@ -124,6 +125,14 @@ export const RemotionRoot: React.FC = () => {
 				id="ZigzagDualStack"
 				component={ZigzagDualStackComposition}
 				durationInFrames={1200}
+				fps={30}
+				width={1280}
+				height={720}
+			/>
+			<Composition
+				id="MedianOfTwoSortedArrays"
+				component={MedianOfTwoSortedArraysComposition}
+				durationInFrames={Math.ceil(medianStepsCount * 2.5 * 30)}
 				fps={30}
 				width={1280}
 				height={720}
