@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#203f35" />
+  <title>算法研习室 · 滑动窗口最大值</title>
+  <link rel="stylesheet" href="./workbench.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到学习内容</a>
+  <aside class="sidebar">
+    <a class="brand" href="./workbench.html" aria-label="算法研习室首页"><span class="brand-mark" aria-hidden="true">[ / ]</span><span>算法研习室<small>ALGORITHM STUDIO</small></span></a>
+    <div class="sidebar-section">我的学习空间</div>
+    <nav aria-label="学习导航">
+      <a class="nav-item active" href="#lab"><span>01</span> 可视化实验室</a>
+      <a class="nav-item" href="#reading"><span>02</span> 解题与实现</a>
+      <a class="nav-item" href="#practice-anchor" id="practice-nav"><span>03</span> 迁移自测</a>
+    </nav>
+    <div class="sidebar-section library-heading">本地课程 <span>01</span></div>
+    <div class="lesson-item"><span class="lesson-number">239</span><strong>滑动窗口最大值</strong><span>单调队列 · 已验证事件模型</span></div>
+    <div class="sidebar-note"><span class="local-dot"></span> PERSONAL / LOCAL<p>没有排行榜。<br />只关注你下一次能否独立做出判断。</p></div>
+  </aside>
+
+  <main id="main">
+    <header class="topbar"><div>研习室 <span>/</span> 单调结构 <span>/</span> 239</div><a href="/" target="_blank" rel="noopener">打开动画编辑器 <span aria-hidden="true">↗</span></a></header>
+    <section class="page-heading" id="lab">
+      <div><p class="eyebrow">UNDERSTAND THE DECISION</p><h1>滑动窗口最大值<span class="difficulty">困难</span></h1><p class="lede">不必记住所有元素。看清一个候选，为什么留下，又为什么离开。</p></div>
+      <span class="edition">个人研习版 <span>01 / 单调队列</span></span>
+    </section>
+
+    <section class="input-section" aria-labelledby="input-heading">
+      <div class="section-heading"><h2 id="input-heading">从一组输入开始</h2><span>本地确定性演示 · 不调用 AI</span></div>
+      <form id="input-form" novalidate>
+        <div class="field array-field"><label for="nums">数组 nums</label><input id="nums" name="nums" value="1, 3, -1, -3, 5, 3, 6, 7" maxlength="160" aria-describedby="input-help input-error" autocomplete="off" spellcheck="false" /></div>
+        <div class="field window-field"><label for="window-size">窗口 k</label><input id="window-size" name="k" type="number" min="1" max="10" step="1" value="3" aria-describedby="input-error" /></div>
+        <button type="submit" class="primary" id="apply-input">更新演示 <span aria-hidden="true">→</span></button>
+      </form>
+      <div class="preset-row"><span id="input-help">1–10 个整数，范围 −999～999</span><div aria-label="示例输入"><button type="button" data-preset="classic">经典样例</button><button type="button" data-preset="decreasing">递减序列</button><button type="button" data-preset="duplicates">重复元素</button></div></div>
+      <p id="input-error" class="error-message" role="alert" hidden></p>
+    </section>
+
+    <section class="laboratory" aria-label="算法动态演示">
+      <div class="lab-main">
+        <div class="canvas-toolbar"><span><span class="live-dot"></span> MOTION CANVAS <b id="player-status" role="status">正在准备场景</b></span><label class="toggle"><input id="static-mode" type="checkbox" /> 静态步骤</label></div>
+        <div class="stage" id="stage"><div id="canvas-host"></div>
+          <section id="static-state" aria-label="当前算法状态" hidden><p class="eyebrow">STATE SNAPSHOT</p><h3 id="snapshot-heading">准备开始</h3><dl><div><dt>输入</dt><dd id="state-input"></dd></div><div><dt>当前范围</dt><dd id="state-window"></dd></div><div><dt>候选下标 / 值</dt><dd id="state-deque"></dd></div><div><dt>已有答案</dt><dd id="state-result"></dd></div></dl><p id="state-invariant"></p></section>
+        </div>
+        <div class="player-controls"><button type="button" id="previous" class="icon-button" aria-label="上一步" title="上一步">←</button><button type="button" id="play" class="play-button" disabled>播放</button><button type="button" id="next" class="icon-button" aria-label="下一步" title="下一步">→</button><label class="sr-only" for="timeline">动画进度</label><input id="timeline" type="range" min="0" max="4935" value="60" step="1" /><output id="timecode" for="timeline">00:01 / 01:22</output><label class="speed-picker" for="playback-speed">倍速 <select id="playback-speed" aria-label="播放倍速"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label><button type="button" id="fullscreen" class="icon-button" aria-label="全屏查看场景" title="全屏">⛶</button></div>
+        <div class="chapter-row" id="chapters" aria-label="关键章节"></div>
+        <div class="player-footnote"><label><input id="pause-questions" type="checkbox" checked /> 遇到思考点时暂停</label><span id="step-count">步骤 1 / 33</span></div>
+      </div>
+      <aside class="focus-panel" aria-labelledby="focus-heading"><p class="eyebrow">THE WHY BEHIND THE STEP</p><div id="step-kind" class="step-kind">建立直觉</div><h2 id="focus-heading" aria-live="polite">只留下可能获胜的候选。</h2><p id="focus-body">场景加载后，可以播放、逐步前进，或直接跳转到关键决策。</p><div class="focus-rule"><span>为什么这样做</span><p id="focus-detail">同一份算法事件，同时驱动动画与文字状态。</p></div><div id="checkpoint" class="checkpoint">等待场景就绪</div></aside>
+    </section>
+    <p id="runtime-error" class="error-message" role="alert" hidden></p>
+
+    <section id="reading" class="reading-section">
+      <div class="reading-header"><div role="tablist" aria-label="学习内容"><button type="button" id="tab-explanation" role="tab" aria-controls="panel-explanation" aria-selected="true" data-tab="explanation">解题逻辑</button><button type="button" id="tab-code" role="tab" aria-controls="panel-code" aria-selected="false" tabindex="-1" data-tab="code">参考代码</button><button type="button" id="tab-practice" role="tab" aria-controls="panel-practice" aria-selected="false" tabindex="-1" data-tab="practice">迁移自测 <span id="practice-count">0 / 3</span></button></div><span class="reading-label">从看懂，到独立判断</span></div>
+      <div id="panel-explanation" role="tabpanel" aria-labelledby="tab-explanation" tabindex="0" class="explanation-panel">
+        <article class="explanation"><p class="eyebrow">THE CORE IDEA</p><h2>不是维护整个窗口，<br />而是维护仍然有机会的候选。</h2><p>给定数组和固定窗口大小 k，每右移一格，输出窗口内最大值。直接重扫每个窗口需要 O(nk)；真正的优化，是证明某些旧元素以后也不可能赢，从此不再看它们。</p><div class="complexity"><span>时间 <strong>O(n)</strong></span><span>候选空间 <strong>O(k)</strong></span><span>不含输出与教学快照</span></div></article>
+        <ol class="reasoning"><li><span>01</span><div><h3>先检查资格，再比较大小</h3><p>下标已经离开窗口，即使值最大也必须删除。这是队头的职责。</p></div></li><li><span>02</span><div><h3>更晚到达，而且不更小</h3><p>新元素若不小于队尾，就比旧候选更晚过期，也不更差。旧候选可以永久淘汰。</p></div></li><li><span>03</span><div><h3>维护结束，才读取答案</h3><p>有效下标递增，对应值严格递减。窗口形成后，队头就是最大值；每个下标最多进出各一次。</p></div></li></ol>
+      </div>
+      <div id="panel-code" role="tabpanel" aria-labelledby="tab-code" tabindex="0" hidden><div class="code-toolbar"><div><label for="language">参考语言</label><select id="language"><option value="go">Go</option><option value="python">Python</option><option value="cpp">C++</option></select></div><button type="button" id="copy-code" class="secondary">复制代码</button></div><p id="code-note"></p><pre tabindex="0" aria-label="当前语言参考实现"><code id="code-content"></code></pre><p class="muted-note">参考实现，不是实时 AI 生成；页面不执行你输入的任意代码。切换语言不会改变算法演示。</p></div>
+      <div id="panel-practice" role="tabpanel" aria-labelledby="tab-practice" tabindex="0" hidden><span id="practice-anchor"></span><div class="practice-layout"><form id="quiz-form"><p id="question-skill" class="eyebrow"></p><h2 id="question-title"></h2><p id="question-context"></p><fieldset id="question-options"><legend class="sr-only">选择你的判断</legend></fieldset><div class="quiz-actions"><button class="primary" type="submit" id="submit-answer">提交判断</button><button class="text-button" type="button" id="show-hint">给我一点提示</button><button class="secondary" type="button" id="next-question" hidden>下一题 →</button></div><p id="question-hint" class="hint" hidden></p><div id="answer-feedback" role="status" hidden></div></form><aside class="practice-record"><p class="eyebrow">EVIDENCE, NOT A SCORE</p><h3>留下判断的证据</h3><p>首次作答与提示后的重做分开记录。这里不计算虚假的“掌握百分比”。</p><ul id="attempt-summary"></ul><p id="storage-status" role="status">记录仅保存在此浏览器</p><button type="button" id="export-records" class="text-button">导出学习记录 ↓</button></aside></div></div>
+    </section>
+    <footer class="page-footer"><span>当前支持 239 的参数化学习。任意题目 Agent 分析尚未接入。</span><span>本机运行 · 无账号 · 无付费</span></footer>
+    <div id="notice" class="notice" role="status" hidden></div>
+  </main>
+  <script type="module" src="./workbench.ts"></script>
+</body>
+</html>

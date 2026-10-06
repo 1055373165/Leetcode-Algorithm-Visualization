@@ -5,6 +5,10 @@ node_modules/
 .remotion/
 .cache/
 algo-visualizer/out/
+motion-canvas/output/
+motion-canvas/review/
+motion-canvas/workbench-*.png
+motion-canvas/window-*.png
 dist/
 
 # Local runtime artifacts

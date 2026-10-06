@@ -1,170 +1,412 @@
-# 146. LRU 缓存：哈希表与链表的联姻
+# 146. LRU 缓存
 
-## 1. 审题（Problem）
+## 1. 30 秒面试回答
 
-### 1.1 约束解码
-设计一个 **LRU (Least Recently Used)** 缓存机制。
-核心操作有两个：
-1.  `get(key)`：如果存在，返回 value，并将该节点标记为“最近使用”。
-2.  `put(key, value)`：插入或更新。如果容量满了，要驱逐“最久未使用”的节点。
-**硬性要求**：两个操作的时间复杂度必须都是 **$O(1)$**。
+这题是**数据结构设计题**。最优解是 `哈希表 + 双向链表`：哈希表负责 `O(1)` 定位 key，对应节点在链表中的位置；双向链表维护最近使用顺序，头部是 MRU，尾部是 LRU。`get` 命中后把节点移到头部，`put` 插入或更新后也移到头部，超容量时淘汰尾部。时间复杂度平均 `O(1)`，因为每次操作只做一次哈希查询和常数次链表摘除/插入；空间 `O(capacity)`。
 
-### 1.2 边界陷阱
-*   **空校验**：访问不存在的 key 返回 -1。
-*   **容量为 0**：虽然题目约束 capacity >= 1，但在工程实现中要注意。
-*   **更新已存在的 key**：这算作一次“使用”，需要更新 value 并移动到“最近使用”位置。
-*   **驱逐逻辑**：当 `size > capacity` 时，必须删除最旧的那个。
+## 2. 我第一眼应该先想到什么
 
-### 1.3 问题归类
-这是一个 **数据结构设计** 题。
-*   用数组？插入删除是 $O(N)$。❌
-*   用链表？查找是 $O(N)$。❌
-*   用哈希表？查找是 $O(1)$，但没有顺序，无法知道谁是“最近”谁是“最久”。❌
-我们需要把哈希表和链表结合起来——**哈希链表（LinkedHashMap）**。
+- **信号词**：`设计缓存`、`get/put`、`最近最少使用`、`两个操作都要 O(1)`
+- **为什么这些信号会把人引向这个解法**：你既要按 key 随机访问，又要维护“新旧顺序”，而且还要常数时间删除中间节点和淘汰尾部
+- **第一次做最自然的暴力起点**：`map + 时间戳`，每次访问更新时间，容量满了扫描最老的 key
+- **暴力真正慢在哪里**：淘汰时必须全表找最小时间戳，是 `O(n)`；如果用数组维护顺序，中间元素被访问后移到头部也要整体搬移，还是 `O(n)`
 
-## 2. 思维演化（Reasoning）
+## 3. 核心洞察
 
-### 2.1 为什么需要“双向”链表？
-我们需要一个队列来维护顺序：
-*   队头：最近使用（Most Recently Used）。
-*   队尾：最久未使用（Least Recently Used）。
-当我们需要删除一个特定节点（比如更新了某个 key，或者使用了某个 key，需要把它移到队头）时：
-*   **单向链表**：虽然可以通过 Map 找到该节点，但删除它需要知道它的 **前驱节点**。单向链表找前驱是 $O(N)$。
-*   **双向链表**：节点自带 `prev` 指针，删除自身只需要 $O(1)$。
-**结论**：必须用双向链表。
+### 面试官想考什么
 
-### 2.2 为什么需要哈希表？
-链表虽然能维护顺序，但查找 key 对应的节点在哪里需要遍历。
-为了实现 `get` 的 $O(1)$，我们需要一个 `Map<key, Node>`，直接定位到链表中的节点地址。
+面试官想看你能不能把两个互相冲突的需求拼起来：
 
-### 2.3 组合威力
-*   **Map**：负责快速定位（索引）。
-*   **DoubleList**：负责快速移动（数据组织）。
-这就好比图书馆：
-*   Map 是索引卡片，告诉你书在哪一架哪一层。
-*   List 是书架，书本身按“阅读热度”排列。拿书（删除+插入）很快。
+- `按 key O(1) 找到元素`
+- `按最近使用顺序 O(1) 调整位置 / 淘汰尾部`
 
-## 3. 直觉培养（Intuition）
+这本质上是在考你会不会把**索引结构**和**顺序结构**解耦。
 
-### 3.1 虚拟头尾节点的智慧
-在实现双向链表时，最烦的就是处理 NULL 指针。
-比如删除最后一个节点，要判断 `tail` 是否为空；插入第一个节点，要判断 `head` 是否为空。
-**技巧**：使用 `Dummy Head` 和 `Dummy Tail`。
-*   初始化：`Head <-> Tail`
-*   插入：永远插在 `Head` 和 `Head.next` 之间。
-*   删除：永远是删除 `Tail.prev`（最久未使用）。
-这样，真实的节点永远夹在两个哨兵之间，永远不用判断 NULL。
+### 面试官期望解 vs 快速稳妥解
 
-![LRU缓存动画](animation.mp4)
+在 Go 语境里，这两者**本质上是同一个解法**，只是在链表这一层是“手写”还是“用标准库 `container/list`”：
 
-## 4. 代码实现（Solution）
+- **最优解**：`map + doubly linked list`
+- **面试时推荐策略**：先口头说清“哈希表 + 双向链表 + 头新尾旧”的机制；写代码时主推 `container/list` 版本，更稳；如果面试官追问底层，再把 `list.List` 换成手写哨兵双向链表
+
+### 最关键的不变量
+
+- 哈希表中每个 `key` 都唯一映射到链表中的一个节点
+- 链表从前到后表示 `最近使用 -> 最久未使用`
+- 每次 `get` 命中或 `put` 更新/插入后，该节点都必须成为头部
+- 真正要淘汰的节点，永远是尾部
+
+### 为什么它是这题的命门
+
+因为题目不是单纯考“缓存”，而是在考：**你能不能在 O(1) 内同时解决“定位”和“重排”**。  
+单独一个结构都不够，必须组合。
+
+### 为什么这样设计不会漏解
+
+因为所有活跃 key 都同时存在于两处：
+
+- map 负责“能找到”
+- 链表负责“知道冷热”
+
+节点每次被访问就立刻移到头部，所以尾部始终保持“最久未使用”的语义，不会淘汰错人。
+
+### 为什么容易误判成别的相邻题型
+
+- **容易误判成队列**：队列只能删头尾，删中间节点不行
+- **容易误判成堆 / 优先队列**：能找到最老的，但更新一个 key 的“最近时间”不是 `O(1)`
+- **容易误判成单链表**：找到节点后，删它还需要前驱，仍然不是 `O(1)`
+
+## 4. 最优解怎么一步步长出来
+
+1. **暴力起点**  
+   用 `map[key] = value` 存值，再配一个时间戳或数组记录冷热
+
+2. **瓶颈**  
+   淘汰最老元素要扫描；命中一个中间元素后挪到最新位置要搬移
+
+3. **观察到的规律**  
+   这题所有复杂操作，最终都可以归结成两种常数动作：
+   - 通过 key 立刻找到节点
+   - 把节点从当前位置摘掉，再插到头部
+
+4. **如何利用规律进入最优解**  
+   哈希表解决“找节点”，双向链表解决“摘节点 / 插头部 / 删尾部”
+
+### 最容易想错的思维岔路
+
+**岔路**：用单链表维护顺序，因为“尾删好像也很方便”。
+
+错在这里：`get(key)` 命中的是中间节点，你要把它移到头部，单链表没有前驱就没法 `O(1)` 删除它。
+
+## 5. 手推一个关键样例
+
+统一样例：
+
+- `capacity = 2`
+- 操作序列：`put(1,1), put(2,2), get(1), put(3,3), get(2), put(4,4), get(1), get(3), get(4)`
+
+链表顺序统一记为：`[MRU ... LRU]`
+
+| 关键时刻 | 操作 | 链表顺序 | 说明 |
+|---|---|---|---|
+| 1 | `put(1,1)` | `[1]` | 新节点插头部 |
+| 2 | `put(2,2)` | `[2,1]` | 2 最新，1 变旧 |
+| 3 | `get(1)` | `[1,2]` | 命中 1，移到头部 |
+| 4 | `put(3,3)` | `[3,1]` | 容量满，淘汰尾部 2 |
+| 5 | `get(2)` | `[3,1]` | 2 已被淘汰，返回 `-1` |
+| 6 | `put(4,4)` | `[4,3]` | 容量满，淘汰尾部 1 |
+| 7 | `get(3)` | `[3,4]` | 命中 3，移到头部 |
+| 8 | `get(4)` | `[4,3]` | 命中 4，移到头部 |
+
+这里最关键的两个转折：
+
+- `get(1)` 不是“只返回值”，而是“返回值 + 刷新冷热”
+- `put(3,3)` / `put(4,4)` 不是随机淘汰，而是**必淘汰尾部**
+
+## 6. ASCII 状态转移图
+
+同样使用样例：
+
+```text
+Frame 1: 执行 put(1,1), put(2,2) 后
+
+map   : {1 -> node1, 2 -> node2}
+list  : HEAD <-> [2] <-> [1] <-> TAIL
+state : front = MRU, back = LRU
+
+说明：2 是最新，1 是最旧。
+
+
+Frame 2: 执行 get(1)
+
+map   : {1 -> node1, 2 -> node2}
+list  : HEAD <-> [1] <-> [2] <-> TAIL
+ret   : 1
+
+说明：命中 key=1 后，node1 从尾部摘下并插到头部。
+
+
+Frame 3: 执行 put(3,3)
+
+map   : {1 -> node1, 3 -> node3}
+list  : HEAD <-> [3] <-> [1] <-> TAIL
+evict : [2]
+
+说明：容量满时，尾部 [2] 一定是 LRU，所以先删 2，再把 3 放到头部。
+
+
+Frame 4: 执行 put(4,4), get(3), get(4)
+
+put(4,4) 后:
+list  : HEAD <-> [4] <-> [3] <-> TAIL
+evict : [1]
+
+get(3) 后:
+list  : HEAD <-> [3] <-> [4] <-> TAIL
+
+get(4) 后:
+list  : HEAD <-> [4] <-> [3] <-> TAIL
+
+说明：每次命中都刷新到头部，尾部语义始终保持正确。
+```
+
+## 7. 最优解视频生成方案
+
+- **视频目标**：让人看懂 LRU 的真正机制不是“记住模板”，而是“命中要移头、超容要删尾，map 只是帮你瞬间定位节点”
+- **视觉映射**：
+  - HashMap：右侧卡片展示 `key -> node`
+  - 双向链表：中间从 `HEAD` 到 `TAIL`，前端标 `MRU`，尾端标 `LRU`
+  - 当前操作：顶部大号操作条，例如 `get(1)`、`put(3,3)`
+  - 淘汰节点：红色高亮
+- **镜头拆分**：
+  1. 初始化并插入 `1`、`2`
+  2. `get(1)`：命中并移到头部
+  3. `put(3,3)`：容量满，淘汰尾部 `2`
+  4. `put(4,4)`：再次淘汰尾部 `1`
+  5. `get(3)` / `get(4)`：连续刷新热点
+- **step 数据字段**：
+  - `operation`
+  - `capacity`
+  - `size`
+  - `nodes`（按 MRU -> LRU 顺序）
+  - `activeKey`
+  - `victimKey`
+  - `newKey`
+  - `result`
+  - `actionLabel`
+  - `what`
+  - `why`
+  - `invariant`
+  - `progress`
+- **节奏建议**：
+  - 总时长约 30 秒
+  - 每步 2.5 秒
+  - `put(3,3)` 和 `put(4,4)` 的淘汰镜头放慢，突出“删尾”的决策
+
+### 实际生成的 Remotion 代码
+
+- Composition: [algo-visualizer/src/compositions/LRUCache.tsx](/Users/smy/project/algorithm/algo-visualizer/src/compositions/LRUCache.tsx)
+- Visualizer: [algo-visualizer/src/components/LRUCacheVisualizer.tsx](/Users/smy/project/algorithm/algo-visualizer/src/components/LRUCacheVisualizer.tsx)
+- 注册入口: [algo-visualizer/src/index.tsx](/Users/smy/project/algorithm/algo-visualizer/src/index.tsx)
+
+### 渲染命令
+
+```bash
+npx remotion render src/index.tsx LRUCache --output ../0146.LRUCache/animation.mp4
+```
+
+## 8. Go 代码
+
+### 解法一：快速稳妥解（`container/list`）
 
 ```go
+import "container/list"
+
+type entry struct {
+	key   int
+	value int
+}
+
 type LRUCache struct {
 	capacity int
-	cache    map[int]*DLinkedNode
-	head     *DLinkedNode
-	tail     *DLinkedNode
+	items    map[int]*list.Element
+	order    *list.List // Front = MRU, Back = LRU
 }
 
-type DLinkedNode struct {
-	key, value int
-	prev, next *DLinkedNode
-}
-
-// 构造函数：初始化哈希表和双向链表（哨兵）
 func Constructor(capacity int) LRUCache {
-	l := LRUCache{
+	return LRUCache{
 		capacity: capacity,
-		cache:    map[int]*DLinkedNode{},
-		head:     &DLinkedNode{},
-		tail:     &DLinkedNode{},
-	}
-	// 连接哨兵
-	l.head.next = l.tail
-	l.tail.prev = l.head
-	return l
-}
-
-func (this *LRUCache) Get(key int) int {
-	if node, ok := this.cache[key]; ok {
-		// 1. 命中，通过哈希表直接拿到节点
-		// 2. 移到头部（先删再加）
-		this.moveToHead(node)
-		return node.value
-	}
-	return -1
-}
-
-func (this *LRUCache) Put(key int, value int) {
-	if node, ok := this.cache[key]; ok {
-		// 1. key 存在：更新值，移到头部
-		node.value = value
-		this.moveToHead(node)
-	} else {
-		// 2. key 不存在：创建新节点
-		node := &DLinkedNode{key: key, value: value}
-		this.cache[key] = node
-		this.addToHead(node)
-		
-		// 3. 检查容量：如果超限，删除尾部
-		if len(this.cache) > this.capacity {
-			removed := this.removeTail()
-			delete(this.cache, removed.key) // 别忘了删 Map
-		}
+		items:    make(map[int]*list.Element, capacity),
+		order:    list.New(),
 	}
 }
 
-// --- 辅助函数：原子操作 ---
-
-func (this *LRUCache) moveToHead(node *DLinkedNode) {
-	this.removeNode(node)
-	this.addToHead(node)
+func (c *LRUCache) Get(key int) int {
+	e, ok := c.items[key]
+	if !ok {
+		return -1
+	}
+	c.order.MoveToFront(e)
+	return e.Value.(*entry).value
 }
 
-func (this *LRUCache) removeNode(node *DLinkedNode) {
-	node.prev.next = node.next
-	node.next.prev = node.prev
-}
+func (c *LRUCache) Put(key int, value int) {
+	if c.capacity == 0 {
+		return
+	}
 
-func (this *LRUCache) addToHead(node *DLinkedNode) {
-	// 插入到 head 和 head.next 之间
-	node.prev = this.head
-	node.next = this.head.next
-	this.head.next.prev = node
-	this.head.next = node
-}
+	if e, ok := c.items[key]; ok {
+		kv := e.Value.(*entry)
+		kv.value = value
+		c.order.MoveToFront(e)
+		return
+	}
 
-func (this *LRUCache) removeTail() *DLinkedNode {
-	node := this.tail.prev // tail 前面那个才是真正的末尾
-	this.removeNode(node)
-	return node
+	if len(c.items) == c.capacity {
+		back := c.order.Back()
+		kv := back.Value.(*entry)
+		delete(c.items, kv.key)
+		c.order.Remove(back)
+	}
+
+	c.items[key] = c.order.PushFront(&entry{key: key, value: value})
 }
 ```
 
-### 4.2 复杂度证明
-*   **时间复杂度**: $O(1)$。Map 查找是 $O(1)$，链表指针操作是 $O(1)$。
-*   **空间复杂度**: $O(capacity)$。存储最多 `capacity` 个节点。
+### 为什么主推这版
 
-### 4.3 易错点清单
-1.  **Map 同步**：删除链表节点时，千万别忘了同步删除 `cache` 中的 key。我们在 `removeTail` 返回了被删节点，就是为了能在 `Put` 中执行 `delete(this.cache, removed.key)`。
-2.  **双向连接**：在 `addToHead` 时，涉及 4 个指针的修改（新节点的前后，原 head.next 的前，head 的后），顺序不能乱，或者直接对着图写。
-3.  **Key 的必要性**：链表节点 `DLinkedNode` 中必须存 `key`。为什么？因为在 `removeTail` 时，我们需要根据链表淘汰的节点找到 Map 中的 key 并删除。如果节点里只有 value，Map 就删不掉了（Map 是单向的）。
+- 在 Go 里更稳，更适合面试现场一次写对
+- 代码依然完整体现了 `map + doubly linked list` 的核心机制
+- 关键动作只有 3 个：`MoveToFront`、`Remove`、`PushFront`
 
-## 5. 融会贯通（Mastery）
+### 解法二：手写双向链表版
 
-### 5.1 变体题群
-| 题目 | 变化点 | 解法调整 |
-| :--- | :--- | :--- |
-| **146. LRU** | 最近最少使用 | Hash + DoubleList |
-| **460. LFU** | 最不经常使用（按频率） | 两个 Hash，一个存 KV，一个存 Freq->List。逻辑非常复杂，面试通常只考 LRU |
-| **Redis LRU** | 近似 LRU | 随机采样几个 key，淘汰最旧的。因为维护双向链表太耗内存。 |
+```go
+type node struct {
+	key   int
+	value int
+	prev  *node
+	next  *node
+}
 
-### 5.2 模式识别
-当题目要求：
-1.  **Key-Value 存储**
-2.  **有时序或优先级要求**（最近使用、最大、最小）
-3.  **$O(1)$ 操作**
-这就暗示需要 **哈希表**（解决查找） + **链表/树**（解决顺序）。
-*   如果要 $O(1)$ 查找最值 -> Hash + 双向链表（LRU）
-*   如果要 $O(\log n)$ 范围查找 -> Hash + 跳表/红黑树
+type LRUCache struct {
+	capacity int
+	items    map[int]*node
+	head     *node // dummy head, head.next is MRU
+	tail     *node // dummy tail, tail.prev is LRU
+}
+
+func Constructor(capacity int) LRUCache {
+	head := &node{}
+	tail := &node{}
+	head.next = tail
+	tail.prev = head
+
+	return LRUCache{
+		capacity: capacity,
+		items:    make(map[int]*node, capacity),
+		head:     head,
+		tail:     tail,
+	}
+}
+
+func (c *LRUCache) Get(key int) int {
+	n, ok := c.items[key]
+	if !ok {
+		return -1
+	}
+	c.moveToFront(n)
+	return n.value
+}
+
+func (c *LRUCache) Put(key int, value int) {
+	if c.capacity == 0 {
+		return
+	}
+
+	if n, ok := c.items[key]; ok {
+		n.value = value
+		c.moveToFront(n)
+		return
+	}
+
+	if len(c.items) == c.capacity {
+		last := c.removeLast()
+		delete(c.items, last.key)
+	}
+
+	n := &node{key: key, value: value}
+	c.items[key] = n
+	c.addFirst(n)
+}
+
+func (c *LRUCache) addFirst(n *node) {
+	n.prev = c.head
+	n.next = c.head.next
+	c.head.next.prev = n
+	c.head.next = n
+}
+
+func (c *LRUCache) remove(n *node) {
+	n.prev.next = n.next
+	n.next.prev = n.prev
+}
+
+func (c *LRUCache) moveToFront(n *node) {
+	c.remove(n)
+	c.addFirst(n)
+}
+
+func (c *LRUCache) removeLast() *node {
+	n := c.tail.prev
+	c.remove(n)
+	return n
+}
+```
+
+### 什么时候要切到手写版
+
+- 面试官明确说“不要用标准库容器”
+- 面试官追问你是否真的理解双向链表的 `O(1)` 摘除 / 插入
+- 题目本身就在考“特殊数据结构的内部实现”，而不是只考会不会调用 API
+
+### 两版的本质关系
+
+- `container/list` 版更适合现场稳定写对
+- 手写版更能直接展示你对哨兵节点、前后指针和尾删逻辑的掌控
+- 真正不能丢的是**机制**：`map` 找节点，双向链表排冷热，命中移头，超容删尾
+
+## 9. 最容易写错的地方
+
+1. **`get` 命中后忘了移到头部**  
+   这是最常见的逻辑 bug。返回值对了，但冷热顺序错了
+
+2. **更新已有 key 时只改 value，不刷新位置**  
+   `put` 命中旧 key 也算一次使用，必须变成 MRU
+
+3. **淘汰尾部后忘删 map**  
+   链表里删了，map 里还留着脏指针，后续 `get` 会读到幽灵节点
+
+4. **链表方向记反**  
+   一定统一口径：`Front = MRU`，`Back = LRU`
+
+5. **节点里不存 key**  
+   淘汰尾节点时，map 删除需要 key；如果节点里没有 key，就没法 `delete(items, key)`
+
+## 10. 相邻题迁移
+
+### 1. 460. LFU 缓存
+
+- **共用骨架**：都是 `key -> 节点` 的快速定位 + 链表维护局部顺序
+- **关键不同**：LRU 只按“最近性”排；LFU 先按“频次”分层，再在同频内按最近性排
+- **该改哪一层**：保留 `map + list` 组合思维，只是把“一条链表”升级成“freq -> 多条链表”
+
+### 2. 432. 全 O(1) 的数据结构
+
+- **共用骨架**：哈希表定位 + 双向链表维护有序状态
+- **关键不同**：节点不再是单个 key，而是“某个频次桶”
+- **该改哪一层**：保留“节点可 O(1) 摘除和插入”的链表骨架，把节点语义从缓存项换成计数桶
+
+### 3. 380. O(1) 时间插入、删除和获取随机元素
+
+- **共用骨架**：也是设计题，也是 `O(1)` 强约束
+- **关键不同**：380 不要求维护冷热顺序，所以不需要链表，改成 `map + slice + swap-delete`
+- **该改哪一层**：保留“索引结构 + 主存结构分离”的思维，但把“顺序结构”从双向链表换成数组
+
+## 11. 闭卷自测
+
+1. 为什么这题不能只用 `map`？
+2. 为什么这里必须是**双向**链表，而不是单链表？
+3. `get` 和 `put` 命中旧 key 时，链表上必须做什么动作？
+4. 为什么尾部一定就是应该被淘汰的节点？
+5. 如果我把 `Front/MRU` 和 `Back/LRU` 的定义反过来，代码要改哪几层？
+
+## 12. 复盘卡
+
+```text
+题型信号：设计缓存 + 最近最少使用 + get/put 都要 O(1)
+核心不变量：map 定位节点，链表维护 MRU -> LRU，命中后移头，超容删尾
+最关键转折：问题不是“怎么存值”，而是“怎么在 O(1) 内同时定位和重排”
+最易错点：get/put 命中旧 key 后忘记刷新到头部；淘汰尾部后忘删 map
+一句话口诀：map 负责找，双链表负责排；命中就移头，超容就删尾
+```

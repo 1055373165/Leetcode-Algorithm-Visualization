@@ -1,0 +1,10 @@
+{
+  "extends": "@motion-canvas/2d/tsconfig.project.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["../motion-canvas/**/*.ts", "../motion-canvas/**/*.tsx", "motion-canvas/**/*.ts", "motion-canvas.vite.ts"]
+}

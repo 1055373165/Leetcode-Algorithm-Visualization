@@ -3,7 +3,14 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "tsx --test motion-canvas/model/*.test.ts",
+    "motion:dev": "vite --config .devin/motion-canvas.vite.ts",
+    "motion:build": "vite build --config .devin/motion-canvas.vite.ts",
+    "motion:check": "tsc -p .devin/motion-canvas.tsconfig.json",
+    "motion:render": "tsx motion-canvas/render.ts",
+    "learn": "vite --config .devin/motion-canvas.vite.ts --open /motion-canvas/workbench.html",
+    "learn:check": "tsx motion-canvas/workbench-check.ts",
+    "learn:code-check": "tsx motion-canvas/code-check.ts"
   },
   "keywords": [],
   "author": "",
@@ -16,6 +23,16 @@
     "remotion": "^4.0.421"
   },
   "devDependencies": {
-    "@types/react": "^19.2.14"
+    "@motion-canvas/2d": "3.17.2",
+    "@motion-canvas/core": "3.17.2",
+    "@motion-canvas/ffmpeg": "3.17.2",
+    "@motion-canvas/ui": "3.17.2",
+    "@motion-canvas/vite-plugin": "3.17.2",
+    "@types/node": "22.18.6",
+    "@types/react": "^19.2.14",
+    "playwright": "1.56.1",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "vite": "5.4.21"
   }
 }
